@@ -8,6 +8,11 @@ services:
       POSTGRES_DB: mydatabase
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d mydatabase"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
       - ./pg_data:/var/lib/postgresql/data
 
@@ -15,7 +20,8 @@ services:
     build: .
     container_name: sqlalchemy-sandbox-app
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432

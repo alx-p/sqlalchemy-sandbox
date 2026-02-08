@@ -1,16 +1,9 @@
 from flask import Flask, jsonify, request
-# from sqlalchemy import create_engine
 from sqlalchemy.orm import joinedload # sessionmaker, 
 from models import User, Todo
 from database import SessionLocal, Base, engine, init_db
 
 app = Flask(__name__)
-
-# Создаем все таблицы
-Base.metadata.create_all(bind=engine)
-
-# Создание движка SQLAlchemy (перемещаем выше)
-#engine = create_engine(DATABASE_URL)
 
 # Создание сессии
 #Session = sessionmaker(bind=engine)
