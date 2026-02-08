@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   postgres:
-    image: postgres:13
-    container_name: postgres_db
+    image: postgres:13.22-bookworm
+    container_name: sqlalchemy-sandbox-pg
     environment:
       POSTGRES_USER: myuser
       POSTGRES_PASSWORD: mypassword
@@ -11,11 +9,11 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./pg_data:/var/lib/postgresql/data
 
   app:
     build: .
-    container_name: sqlalchemy_app
+    container_name: sqlalchemy-sandbox-app
     depends_on:
       - postgres
     environment:
@@ -28,4 +26,4 @@ services:
       - "5000:5000"
 
 volumes:
-  postgres_data:
+  pg_data:

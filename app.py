@@ -1,48 +1,20 @@
-import os
 from flask import Flask, jsonify, request
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from models import Base, Todo
+# from sqlalchemy import create_engine
+from sqlalchemy.orm import joinedload # sessionmaker, 
+from models import User, Todo
+from database import SessionLocal, Base, engine, init_db
 
 app = Flask(__name__)
 
-# Получение конфигурации из переменных окружения
-DB_HOST = os.getenv('DB_HOST', 'postgres')  # Используем имя сервиса из docker-compose
-DB_PORT = os.getenv('DB_PORT', '5432')
-DB_NAME = os.getenv('DB_NAME', 'mydatabase')
-DB_USER = os.getenv('DB_USER', 'myuser')
-DB_PASSWORD = os.getenv('DB_PASSWORD', 'mypassword')
-
-# Создание строки подключения
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+# Создаем все таблицы
+Base.metadata.create_all(bind=engine)
 
 # Создание движка SQLAlchemy (перемещаем выше)
-engine = create_engine(DATABASE_URL)
-
-# Функция инициализации базы данных
-def init_db():
-    # Добавляем задержку для подстраховки
-    #time.sleep(5)
-    try:
-        # Проверяем подключение
-        with engine.connect() as conn:
-            print("Successfully connected to the database")
-    except Exception as e:
-        print(f"Error connecting to database: {e}")
-        return False
-
-    # Создаем таблицы только если их нет
-    try:
-        Base.metadata.create_all(engine)
-        print("Tables created successfully")
-        return True
-    except Exception as e:
-        print(f"Error creating tables: {e}")
-        return False
+#engine = create_engine(DATABASE_URL)
 
 # Создание сессии
-Session = sessionmaker(bind=engine)
-session = Session()
+#Session = sessionmaker(bind=engine)
+session = SessionLocal()
 
 @app.route('/todos', methods=['GET'])
 def get_todos():
@@ -55,6 +27,29 @@ def get_todos():
         'created_at': todo.created_at.isoformat() if todo.created_at else None,
         'updated_at': todo.updated_at.isoformat() if todo.updated_at else None
     } for todo in todos])
+
+@app.route('/todos_u', methods=['GET'])
+def get_todos_u():
+    # Загружаем задачи с их владельцами (users) в одном запросе
+    todos = session.query(Todo).options(joinedload(Todo.owner)).all()
+
+    result = []
+    for todo in todos:
+        result.append({
+            "id": todo.id,
+            "title": todo.title,
+            "description": todo.description,
+            "completed": todo.completed,
+            "created_at": todo.created_at.isoformat(),
+            "updated_at": todo.updated_at.isoformat(),
+            "user": {
+                "id": todo.owner.id,
+                "username": todo.owner.username,
+                "email": todo.owner.email,
+                "full_name": todo.owner.full_name
+            }
+        })
+    return jsonify(result)
 
 @app.route('/todos', methods=['POST'])
 def create_todo():
@@ -71,6 +66,62 @@ def create_todo():
         'user_id': new_todo.user_id,
         'title': new_todo.title,
         'completed': new_todo.completed
+    }), 201
+
+# создание пользователя
+@app.route('/users', methods=['POST'])
+def create_user():
+    data = request.get_json()
+
+    new_user = User(
+        username=data['username'],
+        email=data['email'],
+        full_name=data.get('full_name', ''),
+        is_active=data.get('is_active', True)
+    )
+
+    session.add(new_user)
+    session.commit()
+
+    return jsonify({
+        "id": new_user.id,
+        "username": new_user.username,
+        "email": new_user.email,
+        "full_name": new_user.full_name,
+        "is_active": new_user.is_active
+    }), 201
+
+@app.route('/todos_u', methods=['POST'])
+def create_todo_u():
+    data = request.get_json()
+
+    # Создаем новую задачу
+    new_todo = Todo(
+        title=data['title'],
+        description=data.get('description', ''),
+        completed=data.get('completed', False),
+        user_id=data['user_id']  # ID пользователя, который создает задачу
+    )
+
+    session.add(new_todo)
+    session.commit()
+
+    # Возвращаем созданную задачу с информацией о пользователе
+    todo_with_user = session.query(Todo).options(joinedload(Todo.owner)).filter(Todo.id == new_todo.id).first()
+
+    return jsonify({
+        "id": todo_with_user.id,
+        "title": todo_with_user.title,
+        "description": todo_with_user.description,
+        "completed": todo_with_user.completed,
+        "created_at": todo_with_user.created_at.isoformat(),
+        "updated_at": todo_with_user.updated_at.isoformat(),
+        "user": {
+            "id": todo_with_user.owner.id,
+            "username": todo_with_user.owner.username,
+            "email": todo_with_user.owner.email,
+            "full_name": todo_with_user.owner.full_name
+        }
     }), 201
 
 @app.route('/todos/<int:todo_id>', methods=['PUT'])
