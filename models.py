@@ -58,11 +58,13 @@ class Route(Base):
     __tablename__ = 'routes'
 
     route_no = Column(Integer, primary_key=True)
+    validity = Column(String(50), nullable=False)    
     departure_airport = Column(String(3), ForeignKey('airports_data.iata_code'), nullable=False)
     arrival_airport = Column(String(3), ForeignKey('airports_data.iata_code'), nullable=False)
-    validity_period = Column(Interval, nullable=False)
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    airplane_code = Column(String(3), nullable=False)
+    days_of_week = Column(Integer, nullable=False)
+    scheduled_time = Column(Time, nullable=False)
+    duration = Column(Interval, nullable=False)
 
     # Relationships
     departure_airport_obj = relationship("Airport", foreign_keys=[departure_airport], back_populates="routes_as_departure")
@@ -77,10 +79,9 @@ class Route(Base):
 class Booking(Base):
     __tablename__ = 'bookings'
 
-    booking_ref = Column(String(6), primary_key=True)
-    total_price = Column(Float, nullable=False)
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    book_ref = Column(String(6), primary_key=True)
+    book_date = Column(DateTime, timezone=True, nullable=False)
+    total_amount = Column(Float, nullable=False)
 
     # Relationships
     tickets = relationship("Ticket", back_populates="booking")
@@ -89,11 +90,10 @@ class Ticket(Base):
     __tablename__ = 'tickets'
 
     ticket_no = Column(String(13), primary_key=True)
-    booking_ref = Column(String(6), ForeignKey('bookings.booking_ref'), nullable=False)
+    book_ref = Column(String(6), ForeignKey('bookings.book_ref'), nullable=False)
+    passenger_id = Column(String(50), nullable=False)
     passenger_name = Column(String(100), nullable=False)
-    passenger_doc = Column(String(50))
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    outbound = Column(String(50), nullable=False)
 
     # Relationships
     booking = relationship("Booking", back_populates="tickets")
@@ -103,12 +103,10 @@ class Ticket(Base):
 class Segment(Base):
     __tablename__ = 'segments'
 
-    id = Column(Integer, primary_key=True)
     ticket_no = Column(String(13), ForeignKey('tickets.ticket_no'), nullable=False)
     flight_id = Column(Integer, ForeignKey('flights.id'), nullable=False)
     fare_condition = Column(Enum('economy', 'business', 'first', name='fare_condition'), nullable=False)
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    price = Column(Float, nullable=False)
 
     # Relationships
     ticket = relationship("Ticket", back_populates="segments")
@@ -118,13 +116,11 @@ class Segment(Base):
 class BoardingPass(Base):
     __tablename__ = 'boarding_passes'
 
-    id = Column(Integer, primary_key=True)
     ticket_no = Column(String(13), ForeignKey('tickets.ticket_no'), nullable=False)
     flight_id = Column(Integer, ForeignKey('flights.id'), nullable=False)
+    seat_no = Column(String(10), nullable=False)
     boarding_no = Column(Integer)
-    seat_no = Column(String(10))
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    boarding_time = Column(DateTime, timezone=True)
 
     # Relationships
     ticket = relationship("Ticket", back_populates="boarding_passes")
@@ -139,12 +135,9 @@ class BoardingPass(Base):
 class Seat(Base):
     __tablename__ = 'seats'
 
-    id = Column(Integer, primary_key=True)
-    airplane_iata_code = Column(String(3), ForeignKey('airplanes_data.iata_code'), nullable=False)
+    airplane_code = Column(String(3), ForeignKey('airplanes_data.iata_code'), nullable=False)
     seat_no = Column(String(10), nullable=False)
-    fare_condition = Column(Enum('economy', 'business', 'first', name='fare_condition'), nullable=False)
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    fare_conditions = Column(Enum('economy', 'business', 'first', name='fare_condition'), nullable=False)
 
     # Relationships
     airplane = relationship("Airplane", back_populates="seats_info")
