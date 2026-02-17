@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, Float, Date, Time, Boolean, DateTime, ForeignKey, UniqueConstraint, Index, CheckConstraint, DateTime, Interval, ARRAY, Enum
+from sqlalchemy import Column, Integer, Text, String, Float, Numeric, Date, Time, Boolean, DateTime, ForeignKey, UniqueConstraint, Index, CheckConstraint, DateTime, Interval, ARRAY, Enum
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.sql import func
+#from sqlalchemy.ext.hybrid import hybrid_property
+#from sqlalchemy.sql import func
+from sqlalchemy.dialects.postgresql import JSONB, ARRAY, TSTZRANGE
 from datetime import datetime
 from database import Base # Абсолютный импорт
 
@@ -9,9 +10,9 @@ class Airplane(Base):
     __tablename__ = 'airplanes_data'
 
     airplane_code = Column(String(3), primary_key=True) # Airplane code, IATA
-    model = Column(String(50), nullable=False) # Airplane model
-    range = Column(Integer, nullable=False) # Maximum flight range, km
-    speed = Column(Integer, nullable=False) # Cruise speed, km/h
+    model = Column(JSONB, nullable=False)               # Airplane model
+    range = Column(Integer, nullable=False)             # Maximum flight range, km
+    speed = Column(Integer, nullable=False)             # Cruise speed, km/h
 
     # Relationships
     seats_info = relationship("Seat", back_populates="airplane")
@@ -20,12 +21,12 @@ class Airplane(Base):
 class Airport(Base): # Airports (internal multilingual data)
     __tablename__ = 'airports_data'
 
-    airport_code = Column(String(3), primary_key=True)
-    airport_name = Column(String(50), nullable=False)
-    city = Column(String(50), nullable=False)
-    country = Column(String(50), nullable=False)
-    coordinates = Column(String(50), nullable=False)
-    timezone = Column(String(50), nullable=False)
+    airport_code = Column(String(3), primary_key=True)  # Airport code, IATA
+    airport_name = Column(JSONB, nullable=False)        # Airport name
+    city = Column(JSONB, nullable=False)                # City
+    country = Column(JSONB, nullable=False)             # Country
+    coordinates = Column(String(50), nullable=False)    # Airport coordinates (longitude and latitude)
+    timezone = Column(Text, nullable=False)             # Airport time zone
 
     # Relationships
     departure_flights = relationship("Flight", foreign_keys='Flight.departure_airport', back_populates="departure_airport_obj")
@@ -37,7 +38,7 @@ class Flight(Base):
     __tablename__ = 'flights'
 
     flight_id = Column(Integer, primary_key=True)
-    route_no = Column(String(50), nullable=False) # Column(Integer, ForeignKey('routes.id'), nullable=False)
+    route_no = Column(Text, nullable=False) # Column(Integer, ForeignKey('routes.id'), nullable=False)
     status = Column(Enum('scheduled', 'delayed', 'cancelled', 'completed', name='flight_status'), default='scheduled')
     scheduled_departure = Column(DateTime, timezone=True, nullable=False)
     scheduled_arrival = Column(DateTime, timezone=True, nullable=False)
@@ -57,12 +58,12 @@ class Flight(Base):
 class Route(Base):
     __tablename__ = 'routes'
 
-    route_no = Column(Integer, primary_key=True)
-    validity = Column(String(50), nullable=False)    
+    route_no = Column(Text, primary_key=True)
+    validity = Column(TSTZRANGE, nullable=False)    
     departure_airport = Column(String(3), ForeignKey('airports_data.iata_code'), nullable=False)
     arrival_airport = Column(String(3), ForeignKey('airports_data.iata_code'), nullable=False)
     airplane_code = Column(String(3), nullable=False)
-    days_of_week = Column(Integer, nullable=False)
+    days_of_week = Column(ARRAY(Integer), nullable=False)
     scheduled_time = Column(Time, nullable=False)
     duration = Column(Interval, nullable=False)
 
@@ -81,7 +82,7 @@ class Booking(Base):
 
     book_ref = Column(String(6), primary_key=True)
     book_date = Column(DateTime, timezone=True, nullable=False)
-    total_amount = Column(Float, nullable=False)
+    total_amount = Column(Numeric(precision=10, scale=2), nullable=False)
 
     # Relationships
     tickets = relationship("Ticket", back_populates="booking")
@@ -89,11 +90,11 @@ class Booking(Base):
 class Ticket(Base):
     __tablename__ = 'tickets'
 
-    ticket_no = Column(String(13), primary_key=True)
+    ticket_no = Column(Text, primary_key=True)
     book_ref = Column(String(6), ForeignKey('bookings.book_ref'), nullable=False)
-    passenger_id = Column(String(50), nullable=False)
-    passenger_name = Column(String(100), nullable=False)
-    outbound = Column(String(50), nullable=False)
+    passenger_id = Column(Text, nullable=False)
+    passenger_name = Column(Text, nullable=False)
+    outbound = Column(Boolean, nullable=False)
 
     # Relationships
     booking = relationship("Booking", back_populates="tickets")
@@ -103,10 +104,10 @@ class Ticket(Base):
 class Segment(Base):
     __tablename__ = 'segments'
 
-    ticket_no = Column(String(13), ForeignKey('tickets.ticket_no'), nullable=False)
+    ticket_no = Column(Text, ForeignKey('tickets.ticket_no'), nullable=False)
     flight_id = Column(Integer, ForeignKey('flights.id'), nullable=False)
-    fare_condition = Column(Enum('economy', 'business', 'first', name='fare_condition'), nullable=False)
-    price = Column(Float, nullable=False)
+    fare_condition = Column(Text, nullable=False)
+    price = Column(Numeric(precision=10, scale=2), nullable=False)
 
     # Relationships
     ticket = relationship("Ticket", back_populates="segments")
@@ -116,9 +117,9 @@ class Segment(Base):
 class BoardingPass(Base):
     __tablename__ = 'boarding_passes'
 
-    ticket_no = Column(String(13), ForeignKey('tickets.ticket_no'), nullable=False)
+    ticket_no = Column(Text, ForeignKey('tickets.ticket_no'), nullable=False)
     flight_id = Column(Integer, ForeignKey('flights.id'), nullable=False)
-    seat_no = Column(String(10), nullable=False)
+    seat_no = Column(Text, nullable=False)
     boarding_no = Column(Integer)
     boarding_time = Column(DateTime, timezone=True)
 
@@ -136,8 +137,8 @@ class Seat(Base):
     __tablename__ = 'seats'
 
     airplane_code = Column(String(3), ForeignKey('airplanes_data.iata_code'), nullable=False)
-    seat_no = Column(String(10), nullable=False)
-    fare_conditions = Column(Enum('economy', 'business', 'first', name='fare_condition'), nullable=False)
+    seat_no = Column(Text, nullable=False)
+    fare_conditions = Column(Text, nullable=False)
 
     # Relationships
     airplane = relationship("Airplane", back_populates="seats_info")
