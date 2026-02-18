@@ -132,10 +132,10 @@ class Ticket(Base):
 class Segment(Base):
     __tablename__ = 'segments'
 
-    ticket_no = Column(Text, nullable=False)
-    flight_id = Column(Integer, nullable=False)
-    fare_condition = Column(Text, nullable=False)
-    price = Column(Numeric(precision=10, scale=2), nullable=False)
+    ticket_no = Column(Text, nullable=False, comment='Ticket number')
+    flight_id = Column(Integer, nullable=False, comment='Flight ID')
+    fare_condition = Column(Text, nullable=False, comment='Travel class')
+    price = Column(Numeric(precision=10, scale=2), nullable=False, comment='Travel price')
 
     __table_args__ = {
         'comment': 'Flight segment (leg)',
