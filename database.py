@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event, DDL
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import time
@@ -33,6 +33,16 @@ def init_db():
 
     # Создаем таблицы только если их нет
     try:
+        # Создаем команду для создания расширения btree_gist
+        create_extension_ddl = DDL("CREATE EXTENSION IF NOT EXISTS btree_gist;")
+
+        # Регистрируем событие, которое выполнит этот DDL-запрос ДО создания таблиц
+        event.listen(
+            Base.metadata,
+            'before_create',
+            create_extension_ddl.execute_if(dialect="postgresql")
+        )
+
         Base.metadata.create_all(engine)
         print("Tables created successfully")
         return True
