@@ -1,42 +1,32 @@
-from sqlalchemy import Column, Integer, Text, String, Float, Numeric, Date, 
-Time, Boolean, DateTime, ForeignKey, UniqueConstraint, Index, CheckConstraint, 
-DateTime, Interval, ARRAY, Enum, UniqueConstraint, Sequence
+from sqlalchemy import Column, Integer, Text, String, Float, Numeric, Date, Time, Boolean, DateTime, ForeignKey, UniqueConstraint, Index, CheckConstraint, DateTime, Interval, ARRAY, Enum, UniqueConstraint, PrimaryKeyConstraint, Sequence
 from sqlalchemy.orm import relationship
 #from sqlalchemy.ext.hybrid import hybrid_property
 #from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import func
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY, TSTZRANGE, ExcludeConstraint
-from sqlalchemy.schema import PrimaryKeyConstraint, CheckConstraint
+from sqlalchemy.schema import CheckConstraint
 from datetime import datetime
 from database import Base # Абсолютный импорт
 from geoalchemy2 import Geometry
 
 class Airplane(Base):
     __tablename__ = 'airplanes_data'
-    __table_args__ = {
-        'comment': 'Airplanes (internal multilingual data)',
-        'schema': 'bookings',
-        'constraints': (
-            PrimaryKeyConstraint('airplane_code', name='airplanes_data_pkey'),
-            CheckConstraint('range > 0', name='airplanes_data_range_check'),
-            CheckConstraint('speed > 0', name='airplanes_data_speed_check'),
-        )
-    }
 
     airplane_code = Column(String(3), comment='Airplane code, IATA')
     model = Column(JSONB, nullable=False, comment='Airplane model')
     range = Column(Integer, nullable=False, comment='Maximum flight range, km')
-    speed = Column(Integer, nullable=False, comment='Cruise speed, km/h')
+    speed = Column(Integer, nullable=False, comment='Cruise speed, kmh')
 
-class Airport(Base): # Airports (internal multilingual data)
+    __table_args__ = (
+        PrimaryKeyConstraint('airplane_code', name='airplanes_data_pkey'),
+        CheckConstraint('range > 0', name='airplanes_data_range_check'),
+        CheckConstraint('speed > 0', name='airplanes_data_speed_check'),
+        #'comment': 'Airplanes (internal multilingual data)',
+        #'schema': 'bookings',
+    )
+
+class Airport(Base):
     __tablename__ = 'airports_data'
-    __table_args__ = {
-        'comment': 'Airports (internal multilingual data)',
-        'schema': 'bookings',
-        'constraints': (
-            PrimaryKeyConstraint('airport_code', name='airports_data_pkey'),
-        )
-    }
 
     airport_code = Column(String(3), primary_key=True, comment='Airport code, IATA')
     airport_name = Column(JSONB, nullable=False, comment='Airport name')
@@ -45,28 +35,32 @@ class Airport(Base): # Airports (internal multilingual data)
     coordinates = Column(Geometry(geometry_type='POINT'), nullable=False, comment='Airport coordinates (longitude and latitude)')
     timezone = Column(Text, nullable=False, comment='Airport time zone')
 
+    __table_args__ = (
+        PrimaryKeyConstraint('airport_code', name='airports_data_pkey'),
+        #'comment': 'Airports (internal multilingual data)',
+        #'schema': 'bookings',
+    )
+
 class Flight(Base):
     __tablename__ = 'flights'
 
     flight_id = Column(Integer, Sequence('flight_id_seq', start=1, increment=1), comment='Flight ID')
     route_no = Column(Text, nullable=False, comment='Route number')
     status = Column(Text, nullable=False, comment='Flight status')
-    scheduled_departure = Column(DateTime, timezone=True, nullable=False), comment='Scheduled departure time'
-    scheduled_arrival = Column(DateTime, timezone=True, nullable=False, comment='Scheduled arrival time')
-    actual_departure = Column(DateTime, timezone=True, comment='Actual departure time')
-    actual_arrival = Column(DateTime, timezone=True, comment='Actual arrival time')
+    scheduled_departure = Column(DateTime(timezone=True), nullable=False, comment='Scheduled departure time')
+    scheduled_arrival = Column(DateTime(timezone=True), nullable=False, comment='Scheduled arrival time')
+    actual_departure = Column(DateTime(timezone=True), comment='Actual departure time')
+    actual_arrival = Column(DateTime(timezone=True), comment='Actual arrival time')
 
-    __table_args__ = {
-        'comment': 'Flights',
-        'schema': 'bookings',
-        'constraints': (
-            PrimaryKeyConstraint('flight_id', name='flights_pkey'),
-            UniqueConstraint(route_no, scheduled_departure, name='flights_route_no_scheduled_departure_key'),
-            CheckConstraint('((actual_arrival IS NULL) OR ((actual_departure IS NOT NULL) AND (actual_arrival IS NOT NULL) AND (actual_arrival > actual_departure)))', name='flight_actual_check'),
-            CheckConstraint('scheduled_arrival > scheduled_departure', name='flight_scheduled_check'),
-            CheckConstraint('status = ANY (ARRAY[''Scheduled''::text, ''On Time''::text, ''Delayed''::text, ''Boarding''::text, ''Departed''::text, ''Arrived''::text, ''Cancelled''::text])', name='flight_status_check'),
-        )
-    }
+    __table_args__ = (
+        PrimaryKeyConstraint('flight_id', name='flights_pkey'),
+        UniqueConstraint(route_no, scheduled_departure, name='flights_route_no_scheduled_departure_key'),
+        CheckConstraint('((actual_arrival IS NULL) OR ((actual_departure IS NOT NULL) AND (actual_arrival IS NOT NULL) AND (actual_arrival > actual_departure)))', name='flight_actual_check'),
+        CheckConstraint('scheduled_arrival > scheduled_departure', name='flight_scheduled_check'),
+        CheckConstraint('status = ANY (ARRAY[''Scheduled''::text, ''On Time''::text, ''Delayed''::text, ''Boarding''::text, ''Departed''::text, ''Arrived''::text, ''Cancelled''::text])', name='flight_status_check'),
+        #'comment': 'Flights',
+        #'schema': 'bookings',
+    )
 
 class Route(Base):
     __tablename__ = 'routes'
@@ -163,7 +157,7 @@ class BoardingPass(Base):
             # UniqueConstraint('flight_id', 'boarding_no', name='unique_boarding_pass_boarding_no'),
             # UniqueConstraint('flight_id', 'seat_no', name='unique_boarding_pass_seat_no'),
         )
-    )
+    }
 
 class Seat(Base):
     __tablename__ = 'seats'
@@ -180,4 +174,4 @@ class Seat(Base):
             # UniqueConstraint('flight_id', 'boarding_no', name='unique_boarding_pass_boarding_no'),
             # UniqueConstraint('flight_id', 'seat_no', name='unique_boarding_pass_seat_no'),
         )
-    )
+    }
