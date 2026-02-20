@@ -1,23 +1,20 @@
 import os
-from sqlalchemy import create_engine, event, DDL
+import time
+from sqlalchemy import create_engine, event, DDL, schema
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import time
-import psycopg2
+#from sqlalchemy.schema import CreateSchema
+#from sqlalchemy.sql import text
 from psycopg2 import OperationalError
 
 # Получение конфигурации из переменных окружения
 DB_HOST = os.getenv('DB_HOST', 'postgres')  # Используем имя сервиса из docker-compose
 DB_PORT = os.getenv('DB_PORT', '5432')
 DB_NAME = os.getenv('DB_NAME', 'mydatabase')
-DB_USER = os.getenv('DB_USER', 'myuser')
-DB_PASSWORD = os.getenv('DB_PASSWORD', 'mypassword')
+DB_USER = os.getenv('DB_USER', 'postgres')
+DB_PASSWORD = os.getenv('DB_PASSWORD', 'postgres')
 
 SQLALCHEMY_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-
-#SQLALCHEMY_DATABASE_URL = "postgresql://myuser:mypassword@postgres_db/mydatabase"
-
-# engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 # Функция инициализации базы данных
 def init_db():
@@ -33,7 +30,7 @@ def init_db():
 
     # Создаем таблицы только если их нет
     try:
-        # Создаем команду для создания расширения btree_gist
+        # команда для создания расширения btree_gist
         create_extension_ddl = DDL("CREATE EXTENSION IF NOT EXISTS btree_gist;")
 
         # Регистрируем событие, которое выполнит этот DDL-запрос ДО создания таблиц
@@ -42,6 +39,11 @@ def init_db():
             'before_create',
             create_extension_ddl.execute_if(dialect="postgresql")
         )
+
+        # Создание схемы, если её нет
+        with engine.connect() as conn:
+            conn.execute(schema.CreateSchema('bookings', if_not_exists=True))
+            conn.commit()
 
         Base.metadata.create_all(engine)
         print("Tables created successfully")
@@ -68,7 +70,5 @@ def create_db_engine():
             retry_delay *= 2  # Экспоненциальное увеличение задержки
 
 engine = create_db_engine()
-
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 Base = declarative_base()
