@@ -144,6 +144,8 @@ class BoardingPass(Base):
     __table_args__ = (
         PrimaryKeyConstraint('ticket_no', 'flight_id', name='boarding_passes_pkey'),
         ForeignKeyConstraint(['ticket_no', 'flight_id'], ['bookings.segments.ticket_no', 'bookings.segments.flight_id'], name="boarding_passes_ticket_no_flight_id_fkey"),
+        UniqueConstraint(flight_id, boarding_no, name='boarding_passes_flight_id_boarding_no_key'),
+        UniqueConstraint(flight_id, seat_no, name='boarding_passes_flight_id_seat_no_key'),
         {'schema': 'bookings', 'comment': 'Boarding passes'},
     )
 

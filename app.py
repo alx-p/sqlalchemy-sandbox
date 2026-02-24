@@ -8,6 +8,17 @@ app = Flask(__name__)
 #Session = sessionmaker(bind=engine)
 session = SessionLocal()
 
+@app.route('/airplanes', methods=['GET'])
+def get_airplanes():
+    airplanes = session.query(Airplane).all()
+    return jsonify([{
+        'airplane_code': airplane.airplane_code,
+        'model': airplane.model,
+        'range': airplane.range,
+        'speed': airplane.speed,
+    } for airplane in airplanes])
+
+
 if __name__ == '__main__':
     # Инициализируем базу данных перед запуском сервера
     if not init_db():
