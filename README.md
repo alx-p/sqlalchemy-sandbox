@@ -1,4 +1,7 @@
 # sqlalchemy-sandbox
+
+!!! Проект переехал в sandbox/sqlalchemy !!!
+
 Это проект-песочница и не имеет никакой практической цели, но даёт возможность "пощупать" технологию SqlAlchemy на маленьком примере.
 
 За основу взята схема данных официальной демо базы данных от PostgresPro: https://postgrespro.com/community/demodb
